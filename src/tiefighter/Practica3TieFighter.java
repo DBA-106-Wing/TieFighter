@@ -12,7 +12,9 @@ import swing.LARVADash;
 /*
 * @author Jaime
 */
-public class Practica3_TieFighter extends LARVAFirstAgent{
+
+public class Practica3TieFighter extends LARVAFirstAgent{
+
 
     enum Status {
         CHECKIN, CHECKOUT, 
@@ -91,8 +93,9 @@ public class Practica3_TieFighter extends LARVAFirstAgent{
                 "ENERGY",
                 "PAYLOAD",
                 "DISTANCE",
-                "ANGULAR",
-                "THERMAL"     // No
+                "ANGULAR",    // No
+                "THERMALHQ"
+
             };
     boolean step = true;
     
@@ -300,28 +303,68 @@ public class Practica3_TieFighter extends LARVAFirstAgent{
     */  
     public Status MySolveProblem() {
         
+
+        // Recibiendo posicion a la que ir (MOVE X Y Z)
+
         open = this.LARVAblockingReceive();
         int nextX, nextY, nextZ;
         myX = Integer.parseInt(open.getContent().split(" ")[1]);
         myY = Integer.parseInt(open.getContent().split(" ")[2]);
         myZ = Integer.parseInt(open.getContent().split(" ")[3]);
         Info("X: " + myX + ", Y: " + myY + ", Z: " + myZ);
+
         outbox = open.createReply();
         outbox.setPerformative(ACLMessage.AGREE);
         outbox.setConversationId(sessionKey);
         outbox.setInReplyTo("MOVE " + myX + " " + myY + " " + myZ);
         outbox.setContent("");
         this.LARVAsend(outbox);
+        
         boolean lecturaCorrecta = myReadSensors();
         int cont = 0;
         
+        // Hasta que no barra todo el mapa
         while(!(myDashboard.getGPS()[0] == myX && myDashboard.getGPS()[1] == myY) && cont < 20){
             String nextAction = myTakeDecision2();
             boolean ejecucionCorrecta = myExecuteAction(nextAction);
+            
             Info("X: " + myDashboard.getGPS()[0] + ", Y: " + myDashboard.getGPS()[1] + ", Z: " + myDashboard.getGPS()[2]);
             Info("Accion: " + nextAction);
             cont++;
+            
             lecturaCorrecta = myReadSensors();
+            
+            // Despues de actualizar los sensores en la posicion actual
+            // Miramos a ver el thermal y si tenemos o no un Jedi detectado
+            
+            int [][] thermal = myDashboard.getThermal();
+            String matrix = "";
+            boolean jediDetected = false;
+            int jediX=-1, jediY=-1;
+            double jediXReal=-1, jediYReal=-1;
+            Info("\n\n\n\n");
+            Info("el thermal tiene length: " + thermal.length);
+            for(int i=0; i< thermal.length; i++){
+                for(int j=0; j< thermal[i].length ; j++){
+                    matrix += thermal[i][j] + " ";
+                    if(thermal[i][j] == 0){
+                        jediDetected = true;
+                        jediX = i - 11;
+                        jediY = j - 11;
+                        jediXReal = jediX + myDashboard.getGPS()[0];
+                        jediYReal = jediY + myDashboard.getGPS()[1];
+                        
+                    }
+                }
+                matrix += "\n";
+            }
+            if(jediDetected){
+                Info("X: " + jediXReal + ", Y: " + jediYReal);
+                break;
+            }
+            Info(matrix);
+            Info("\n\n\n\n");
+
         }
         
         return Status.CHECKOUT;
@@ -377,6 +420,7 @@ public class Practica3_TieFighter extends LARVAFirstAgent{
       
         final double angular = this.myDashboard.getAngular(p);
         double miAltura = myDashboard.getGPS()[2];
+
 
         // ------------------------------------------------------------------- //
         /* NUEVO AHMED: 
