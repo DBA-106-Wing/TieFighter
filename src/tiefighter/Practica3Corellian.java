@@ -5,7 +5,6 @@ import geometry.Point;
 import jade.core.AID;
 import jade.lang.acl.ACLMessage;
 import java.util.ArrayList;
-//import swing.LARVACompactDash;
 import swing.LARVADash;
 
 
@@ -13,7 +12,7 @@ import swing.LARVADash;
 * @author Jaime
 */
 
-public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
+public class Practica3Corellian extends LARVAFirstAgent{
 
 
     enum Status {
@@ -65,6 +64,7 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
     * @author Jaime
     */
     private String pass = "106-WING";
+    private String type = "Corellian";
     
     private int initX;
     private int initY;
@@ -75,7 +75,6 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
     private int myAngular;
     
     private ArrayList<String> jedisEncontrados = new ArrayList<>();
-    private ArrayList<Point> puntos = new ArrayList<>();
     
     private int compass = 0;
     
@@ -86,19 +85,11 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
     ACLMessage open, session;
     String[] contentTokens,
             mySensors = new String[] {
-                "ALIVE",
-                "ONTARGET",   // No 
-                "GPS",        // No
-                "COMPASS",
+                "ALIVE",  // No 
+                "GPS",     
                 "LIDAR",
-                "ALTITUDE",   // No
-                "VISUAL",     // No
-                "ENERGY",
-                "PAYLOAD",
                 "DISTANCE",
-                "ANGULAR",    // No
-                "THERMALHQ"
-
+                "ANGULAR",
             };
     boolean step = true;
     
@@ -176,7 +167,7 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
             Error("Unable to checkin");
             return Status.EXIT;
         }
-        DFSetMyServices(new String[]{"FIGHTER " + pass});
+        DFSetMyServices(new String[]{"CORELLIAN " + pass});
         return Status.WAIT;
     }
     
@@ -186,7 +177,7 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
     public Status MyWait() {
         open = LARVAblockingReceive();
         sessionKey = open.getConversationId();
-        map = open.getContent().split(" ")[1];
+        map = open.getContent();
         outbox = open.createReply();
         outbox.setPerformative(ACLMessage.AGREE);
         outbox.setConversationId(sessionKey);
@@ -198,7 +189,6 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
         initY = Integer.parseInt(open.getContent().split(" ")[1]);
         myAngular = 0;
         Info("X: " + initX + ", Y: " + initY);
-        
         return Status.COMISSIONING;
     }
 
@@ -277,7 +267,7 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
         outbox.addReceiver(new AID(sessionManager, AID.ISLOCALNAME));
         outbox.setPerformative(ACLMessage.REQUEST);
         outbox.setContent("Request join session " + sessionKey 
-                         + " as " + "Fighter" + " at " + initX + " " + initY +
+                         + " as " + type + " at " + initX + " " + initY +
                          " attach sensors " + sensorKeys);
         
         this.LARVAsend(outbox);
@@ -300,149 +290,66 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
     }
     
     
-    
+    // Metodo importante, resuelve el problema que se abra, en este caso
+    // el de Dagobah
     /*
     * @author Jaime
     * @author Ahmed
     */  
     public Status MySolveProblem() {
         
-        int nextX, nextY, nextZ;
-        // Recibiendo posicion a la que ir (MOVE X Y Z)
+        Info("Esperando peticion");
         open = this.LARVAblockingReceive();
-        
         if(open.getPerformative() == ACLMessage.REQUEST){
+            int nextX, nextY, nextZ;
             myX = Integer.parseInt(open.getContent().split(" ")[1]);
             myY = Integer.parseInt(open.getContent().split(" ")[2]);
             myZ = Integer.parseInt(open.getContent().split(" ")[3]);
             Info("X: " + myX + ", Y: " + myY + ", Z: " + myZ);
 
-
-
-            outbox = open.createReply();
-            outbox.setPerformative(ACLMessage.AGREE);
-            outbox.setConversationId(sessionKey);
-            outbox.setInReplyTo("MOVE " + myX + " " + myY + " " + myZ);
-            outbox.setContent("");
-            this.LARVAsend(outbox);
-
-
             boolean lecturaCorrecta = myReadSensors();
+            if(myDashboard.getAlive() == false){
+                return Status.CHECKOUT;
+            }
+            String nextAction;
             int cont = 0;
 
             // Hasta que no barra todo el mapa
-              while(!(myDashboard.getGPS()[0] == myX && myDashboard.getGPS()[1] == myY) && cont < 50){
+            while(!(myDashboard.getGPS()[0] == myX && myDashboard.getGPS()[1] == myY) && cont < 50){
 
                 // Modo de actuar del agente
-                String nextAction = myTakeDecision2();  // Tomo una decision
-                if(cont == 0){
-                    nextAction = "UP";
-                }
+                nextAction = myTakeDecision2();  // Tomo una decision
                 myExecuteAction(nextAction);            // Ejecuto la accion
                 myReadSensors();                        // Observo el entorno y repito
-                if(myDashboard.getAlive() == false){
-                    return Status.CHECKOUT;
-                }
+
                 Info("X: " + myDashboard.getGPS()[0] + ", Y: " + myDashboard.getGPS()[1] + ", Z: " + myDashboard.getGPS()[2]);
                 Info("Accion: " + nextAction);
                 cont++;
 
+            }
+
+            Info("POSICION FINAL: " + "X: " + myDashboard.getGPS()[0] + ", Y: " + myDashboard.getGPS()[1] + ", Z: " + myDashboard.getGPS()[2]);
 
 
-                // Despues de actualizar los sensores en la posicion actual
-                // Miramos a ver el thermal y si tenemos o no un Jedi detectado
+            while(myDashboard.getLidar()[5][5] > 0){
+                nextAction = "DOWN";
+                myExecuteAction(nextAction);            // Ejecuto la accion
+                myReadSensors();
+            }
 
-                int [][] thermal = myDashboard.getThermal();
-                String matrix = "";
-                boolean jediDetected = false;
-                int jediX=-1, jediY=-1;
-                double jediXReal=-1, jediYReal=-1;
-
-                Info("\n\n\n\n");
-                Info("el thermal tiene length: " + thermal.length);
-
-                int posI, posJ;
-                posI = posJ = -1;
-
-                for(int i=0; i< thermal.length; i++){
-                    for(int j=0; j< thermal[i].length ; j++){
-                        matrix += thermal[i][j] + " ";
-                        if(thermal[i][j] == 0){
-                            jediDetected = true;
-                            // Para obtener la coordenada real del objetivo que desprendio 0
-                            // restamos 10, nuestra coordenada en el thermal. 
-
-                            // Si detectamos al Jedi informamos
-                            // ERROR: estamos detectando varias veces el mismo Jedi en la misma posicion
-                            jediX = j - 10; 
-                            jediY = i - 10;
-
-                            posI = i;
-                            posJ = j;
-
-                            // Sumamos ademas ahora el GPS
-                            jediXReal = jediX + myDashboard.getGPS()[0];
-                            jediYReal = jediY + myDashboard.getGPS()[1];
-                            break;
-
-                        }
-                    }
-                    matrix += "\n";
-                }
-
-
-                if(jediDetected){
-                    String pos = 
-                            "X: " + jediXReal + ", Y: " + jediYReal;
-
-                    Info("Esta es la posicion encontrada: " + pos);
-
-                    boolean aniadido = false;
-                    for(String s: jedisEncontrados){
-                        if (s.equals(pos)){
-                            aniadido = true;
-                        }
-                    }
-
-                    if (!aniadido){
-                        jedisEncontrados.add(pos);
-                        /*
-                        @author Antonio
-                        Enviamos mensaje al destroyer con los jedi encontrados
-                        */
-
-                        //Cambiamos la forma en la que se inserta la pos del jedi,
-                        //para utilizar split() y así obtenemos la x e y.
-
-                        outbox = open.createReply();
-                        outbox.setPerformative(ACLMessage.INFORM_REF);
-                        outbox.setConversationId(sessionKey);
-                        outbox.setInReplyTo("MOVE " + myX + " " + myY + " " + myZ);
-                        outbox.setContent("FOUND " + (int)jediXReal + " " + (int)jediYReal);
-                        this.LARVAsend(outbox);
-
-                    }
-
-                } 
-
-            }  
-
-            /*
-            @author Antonio
-            Informamos al destroyer que hemos llegado a las coordenadas que mandó
-            */
+            nextAction = "CAPTURE";
+            boolean capture =myExecuteAction(nextAction);
 
             outbox = open.createReply();
-            outbox.setPerformative(ACLMessage.INFORM);
+            if(capture){
+                outbox.setPerformative(ACLMessage.INFORM);
+            }else{
+                outbox.setPerformative(ACLMessage.FAILURE);
+            }
             outbox.setConversationId(sessionKey);
-            outbox.setInReplyTo("MOVE " + myX + " " + myY + " " + myZ);
-            outbox.setContent("MOVE " + myX + " " + myY + " " + myZ);
+            outbox.setInReplyTo("CAPTURE " + myX + " " + myY + " " + myZ);
+            outbox.setContent("CAPTURE " + myX + " " + myY + " " + myZ);
             this.LARVAsend(outbox);
-
-            // Mostrar los jedis que se han encontrado
-            jedisEncontrados.forEach(s -> {
-                Info("Hemos encontrado: " + s);
-            });
             
             return Status.SOLVEPROBLEM;
         }else if(open.getPerformative() == ACLMessage.CANCEL){
@@ -451,6 +358,7 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
             return Status.SOLVEPROBLEM;
         }
     }
+    
     
     /*
     * @author Jaime
@@ -522,6 +430,132 @@ public class Practica3TieFighter extends LARVAFirstAgent{  //Practica3TieFighter
             }
         }else{
             nextAction = "MOVE";
+        }
+        
+        return nextAction;
+    }
+
+    
+    private String myTakeDecision() {
+        String nextAction = "";
+        
+        if (false) {
+            maxEnergy = myDashboard.getEnergy() + myDashboard.getEnergyBurnt();   
+            umbralLimiteRecarga = porcentajeLimite * maxEnergy;
+            umbralCercaniaRecarga = porcentajeCercania * maxEnergy;
+            nextAction = "RECHARGE";
+        }
+        else {
+            // Si el dron sigue vivo y tiene energia
+            Info("Alive: " + myDashboard.getAlive() + ", Energy: " + myDashboard.getEnergy());
+            if (myDashboard.getAlive() && myDashboard.getEnergy() > 0) {
+                int lidar[][] = this.myDashboard.getLidar();
+
+
+                if (myDashboard.getEnergy() <= umbralLimiteRecarga ||
+                        (myDashboard.getEnergy() <= umbralCercaniaRecarga && myDashboard.getAltitude() <= alturaCercania)) {
+
+                    // Recargar
+                    if (lidar[5][5] > 0) {
+                        nextAction = "DOWN";
+                    } else {
+                        nextAction = "RECHARGE";
+                    }
+                    
+                } else {
+                    // Si no estamos sobre el objetivo
+                    if (this.myDashboard.getDistance() > 0) {
+                        
+                        final int compass = this.myDashboard.getCompass();
+                        final double angular = this.myDashboard.getAngular();
+                        double miAltura = myDashboard.getGPS()[2];
+
+                        // ------------------------------------------------------------------- //
+                        /* NUEVO AHMED: 
+                            si se esta evitando ir por la izquierda o la derecha
+                            no se pasa a calcular la distancia de giro minima, 
+                            directamente se descarta dar un giro (independientemente
+                            del sentido que se este esquivando)
+                        */
+                        double distanciaAngulo = (angular - compass + gradoTotal) % gradoTotal;
+                        if( distanciaAngulo >= 45 && !(evitandoIzquierda || evitandoDerecha)) {
+                           
+                            // Elegir distancia de giro minimo
+                            if ( distanciaAngulo < gradoTotal/2 ) {
+                                 nextAction = "LEFT";
+                            }
+                            else {
+                                 nextAction = "RIGHT";
+                            }
+                        } else {
+                            // ------------------------------------------------------------------- //
+                            /* NUEVO AHMED: 
+                                Si se esta esquivando algun lado, se comprueba
+                                la altura en direccion objetivo, si es menor a 
+                                la nuestra entonce se avanza hacia alla
+                            */
+                            
+                            int alturaEnfrente = mapearAlturaSegunAngulo(compass, lidar);
+
+                            // Si enfrente es mas alto que dron hay que subir
+                            if (alturaEnfrente < 0 || estaCasillaProhibida(casillaEnfrente(compass, myDashboard.getGPS()))){
+
+                                // ------------------------------------------------------------------- //
+                                /* NUEVO AHMED: 
+                                    Si estamos a maxima altura de vuelo, 
+                                    entonces no podemos avanzar a la casilla de
+                                    enfrente, tenemos que comenzar a evitar 
+                                    casillas. Si giramos a la derecha, evitamos
+                                    lo que se nos queda a la izquierda y vicecersa. 
+                                    Cualquier sentido de giro es valido.
+                                */
+                                if(estaCasillaProhibida(casillaEnfrente(compass, myDashboard.getGPS()))){
+                                    nextAction = "LEFT";
+                                    evitandoDerecha = true;
+                                }else if (miAltura == maxFlight) {
+                                    nextAction = "LEFT";
+                                    evitandoDerecha = true;
+                                    if(!estaCasillaProhibida(myDashboard.getGPS())){
+                                        casillasProhibidas.add(myDashboard.getGPS());
+                                    }
+                                } else {
+                                    nextAction = "UP";
+                                }
+                            }else{
+                                if (evitandoIzquierda || evitandoDerecha) {
+                                    double alturaDireccionAngular = mapearAlturaSegunAngulo((int)angular, lidar);
+
+                                    // si la altura de la casilla en direccion el objetivo es inferior a mi
+                                    // entonces anulo esquivar y dejo que el algoritmo vuelva a apuntar hacia alla
+                                    if (alturaDireccionAngular < miAltura){
+                                      evitandoIzquierda = evitandoDerecha = false;
+                                      nextAction = "MOVE";
+                                    }else{
+                                        if(evitandoIzquierda){
+                                            nextAction = "RIGTH";
+                                        }else{
+                                            nextAction = "LEFT";
+                                        }
+                                    }
+                                } else {
+                                    nextAction = "MOVE";
+                                }
+                            }
+                        }
+                    } else {
+                        // Si estamos sobre el objetivo pero mas altos que
+                        // este, habra que descender
+                        if (lidar[5][5] > 0) {
+                            nextAction = "DOWN";
+                        } else {
+                            // capturar objetivo
+                            nextAction = "CAPTURE";
+                        }
+                    }
+                }
+            } else {
+                Alert("TieFighter sin vida, fin del juego");
+            }
         }
         
         return nextAction;
