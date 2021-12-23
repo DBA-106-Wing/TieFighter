@@ -39,6 +39,8 @@ public class Practica3Destroyer extends LARVAFirstAgent{
     
     private String mapLevel;                        // Nivel del mapa
     
+    private int anchoSensor = 5;
+    
     /*
     * @author Ahmed
     * @author Antonio
@@ -533,7 +535,7 @@ public class Practica3Destroyer extends LARVAFirstAgent{
     // al seguirla se barre el primer cuadrante del mapa en zig-zag vertical
     private ArrayList<String> getRecorridoPrimerCuadrante(){
         
-         int x = 10, y = 10;
+         int x = anchoSensor, y = anchoSensor;
         
         int auxiliar;
         
@@ -549,7 +551,7 @@ public class Practica3Destroyer extends LARVAFirstAgent{
         );
         
         while(x < width/2){
-            y = height - 10;
+            y = height - anchoSensor;
             
             puntos.add(
                     String.valueOf(x)  
@@ -580,7 +582,7 @@ public class Practica3Destroyer extends LARVAFirstAgent{
                     String.valueOf(alturaFighter)
             );
             
-            y = 10;
+            y = anchoSensor;
             
             puntos.add(
                     String.valueOf(x)
@@ -623,7 +625,7 @@ public class Practica3Destroyer extends LARVAFirstAgent{
     * @author Raul
     */
     private ArrayList<String> getRecorridoSegundoCuadrante(){
-        int x = width/2 + 10, y = 10;
+        int x = width/2 + anchoSensor, y = anchoSensor;
         
         int auxiliar;
         
@@ -639,7 +641,7 @@ public class Practica3Destroyer extends LARVAFirstAgent{
         );
         
         while(x < width){
-            y = height - 10;
+            y = height - anchoSensor;
             
             puntos.add(
                     String.valueOf(x)  
@@ -670,7 +672,7 @@ public class Practica3Destroyer extends LARVAFirstAgent{
                     String.valueOf(alturaFighter)
             );
             
-            y = 10;
+            y = anchoSensor;
             
             puntos.add(
                     String.valueOf(x)
